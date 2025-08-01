@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Designs</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container neon-glow">
+        <h1 class="title-text">Design Comparision Tool</h1>
+        
+        <!-- Comparison Mode Toggle -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="screenshot">Screenshot vs Screenshot</button>
+            <button class="mode-btn" data-mode="figma">Figma API vs Screenshot</button>
+        </div>
+        
+        <!-- Screenshot vs Screenshot Form -->
+        <form id="upload-form" class="comparison-form active" enctype="multipart/form-data">
+            <div class="upload-container">
+                <div class="drop-area neon-border" id="figma-drop-area">
+                    <p>Upload Figma Design Screenshot</p>
+                    <input type="file" id="figma-image" name="figma_image" accept="image/*">
+                </div>
+                <div class="drop-area neon-border" id="built-drop-area">
+                    <p>Upload Built Screen Screenshot</p>
+                    <input type="file" id="built-image" name="built_image" accept="image/*">
+                </div>
+            </div>
+            <button type="submit" class="neon-btn" id="compare-btn" disabled>Compare Screenshots</button>
+        </form>
+        
+        <!-- Figma API vs Screenshot Form -->
+        <form id="figma-form" class="comparison-form" enctype="multipart/form-data">
+            <div class="figma-credentials">
+                <div class="input-group">
+                    <label for="figma-token">Figma Access Token</label>
+                    <input type="password" id="figma-token" name="figma_token" placeholder="Enter your Figma access token" required>
+                    <small>Get your token from Figma Settings > Account > Personal access tokens</small>
+                </div>
+                <div class="input-group">
+                    <label for="figma-file-key">Figma File Key</label>
+                    <input type="text" id="figma-file-key" name="figma_file_key" placeholder="Enter Figma file key from URL" required>
+                    <small>Found in Figma file URL: figma.com/file/XXXXX/...</small>
+                </div>
+                <div class="input-group">
+                    <label for="figma-node-id">Node ID (Optional)</label>
+                    <input type="text" id="figma-node-id" name="figma_node_id" placeholder="Specific frame/node ID (optional)">
+                    <small>Leave empty to use the main frame</small>
+                </div>
+                <div class="test-connection">
+                    <button type="button" class="test-btn" id="test-connection-btn">Test Connection</button>
+                    <div id="test-result" class="test-result"></div>
+                </div>
+            </div>
+            <div class="upload-container">
+                <div class="drop-area neon-border" id="figma-api-drop-area">
+                    <p>Upload Implemented UI Screenshot</p>
+                    <input type="file" id="figma-api-image" name="built_image" accept="image/*">
+                </div>
+            </div>
+            <button type="submit" class="neon-btn" id="figma-compare-btn" disabled>Compare with Figma</button>
+        </form>
+        
+        <!-- Help Section -->
+        <div class="help-section">
+            <h3 class="help-title">How to Get Figma Credentials</h3>
+            <div class="help-content">
+                <div class="help-step">
+                    <h4>1. Get Figma Access Token</h4>
+                    <ol>
+                        <li>Go to Figma.com and sign in</li>
+                        <li>Click on your profile icon → Settings</li>
+                        <li>Go to Account tab → Personal access tokens</li>
+                        <li>Click "Create new token"</li>
+                        <li>Give it a name and copy the token</li>
+                    </ol>
+                </div>
+                <div class="help-step">
+                    <h4>2. Get File Key</h4>
+                    <ol>
+                        <li>Open your Figma file</li>
+                        <li>Copy the URL from your browser</li>
+                        <li>The file key is the part after "figma.com/file/"</li>
+                        <li>Example: figma.com/file/abc123/Design → abc123</li>
+                    </ol>
+                </div>
+                <div class="help-step">
+                    <h4>3. Get Node ID (Optional)</h4>
+                    <ol>
+                        <li>Right-click on the frame you want to export</li>
+                        <li>Select "Copy/Paste as" → "Copy link"</li>
+                        <li>The node ID is the last part of the URL</li>
+                        <li>Leave empty to export the entire file</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="result" class="result"></div>
+        
+        <!-- Comparison Images Section -->
+        <div id="comparison-images" class="comparison-images" style="display: none;">
+            <h2 class="comparison-title">Comparison Results</h2>
+            <div class="images-grid">
+                <div class="image-container">
+                    <h3>Figma Design</h3>
+                    <div class="image-wrapper">
+                        <img id="figma-display" class="comparison-img" alt="Figma Design">
+                        <div id="figma-highlight-boxes" class="highlight-boxes"></div>
+                    </div>
+                </div>
+                <div class="image-container">
+                    <h3>Implemented UI</h3>
+                    <div class="image-wrapper">
+                        <img id="built-display" class="comparison-img" alt="Implemented UI">
+                        <div id="built-highlight-boxes" class="highlight-boxes"></div>
+                    </div>
+                </div>
+                <div class="image-container">
+                    <h3>Difference Map</h3>
+                    <div class="image-wrapper">
+                        <img id="difference-display" class="comparison-img" alt="Difference Map">
+                        <div id="difference-highlight-boxes" class="highlight-boxes"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detected Differences Section -->
+        <div id="detected-differences" class="detected-differences" style="display: none;">
+            <h2 class="differences-title">Detected Issues in Implemented UI</h2>
+            <div class="differences-summary">
+                <p>Total differences found: <span id="total-differences">0</span></p>
+                <p class="differences-hint">Click on any issue to highlight it on the images above, or expand for detailed analysis</p>
+            </div>
+            <div id="differences-grid" class="differences-grid">
+                <!-- Differences will be populated here by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Code Generation & Correction Section -->
+        <div id="code-generation" class="code-generation" style="display: none;">
+            <h2 class="code-generation-title">Code Generation & Correction</h2>
+            <div class="code-generation-tabs">
+                <button class="tab-btn active" data-tab="generate">Generate Complete Code</button>
+                <button class="tab-btn" data-tab="correct">Correct Existing Code</button>
+            </div>
+            
+            <!-- Generate Complete Code Tab -->
+            <div id="generate-tab" class="tab-content active">
+                <div class="code-generation-form">
+                    <div class="form-group">
+                        <label for="language-select">Select Programming Language/Framework:</label>
+                        <select id="language-select" class="language-select">
+                            <option value="html-css">HTML + CSS</option>
+                            <option value="react">React JSX</option>
+                            <option value="vue">Vue.js</option>
+                            <option value="angular">Angular</option>
+                            <option value="flutter">Flutter (Dart)</option>
+                            <option value="swift">Swift (iOS)</option>
+                            <option value="kotlin">Kotlin (Android)</option>
+                            <option value="tailwind">Tailwind CSS</option>
+                            <option value="bootstrap">Bootstrap</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="component-name">Component Name (optional):</label>
+                        <input type="text" id="component-name" class="component-input" placeholder="e.g., Header, Card, Button">
+                    </div>
+                    <div class="form-group">
+                        <label for="additional-requirements">Additional Requirements (optional):</label>
+                        <textarea id="additional-requirements" class="requirements-input" placeholder="Describe any specific functionality, animations, or requirements..."></textarea>
+                    </div>
+                    <button id="generate-code-btn" class="generate-btn">🚀 Generate Complete Code</button>
+                </div>
+                <div id="generated-code-result" class="code-result" style="display: none;">
+                    <div class="result-header">
+                        <h3>Generated Code</h3>
+                        <button id="copy-generated-code" class="copy-btn">📋 Copy All</button>
+                    </div>
+                    <div id="generated-code-content" class="code-content-area"></div>
+                </div>
+            </div>
+            
+            <!-- Correct Existing Code Tab -->
+            <div id="correct-tab" class="tab-content">
+                <div class="code-correction-form">
+                    <div class="form-group">
+                        <label for="existing-language">Current Code Language:</label>
+                        <select id="existing-language" class="language-select">
+                            <option value="html-css">HTML + CSS</option>
+                            <option value="react">React JSX</option>
+                            <option value="vue">Vue.js</option>
+                            <option value="angular">Angular</option>
+                            <option value="flutter">Flutter (Dart)</option>
+                            <option value="swift">Swift (iOS)</option>
+                            <option value="kotlin">Kotlin (Android)</option>
+                            <option value="tailwind">Tailwind CSS</option>
+                            <option value="bootstrap">Bootstrap</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="existing-code">Paste Your Current Code:</label>
+                        <textarea id="existing-code" class="code-input" placeholder="Paste your existing HTML, CSS, JSX, or other code here..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="correction-notes">Additional Notes (optional):</label>
+                        <textarea id="correction-notes" class="notes-input" placeholder="Any specific issues you want to address or improvements needed..."></textarea>
+                    </div>
+                    <button id="correct-code-btn" class="correct-btn">🔧 Correct Code Based on Issues</button>
+                </div>
+                <div id="corrected-code-result" class="code-result" style="display: none;">
+                    <div class="result-header">
+                        <h3>Corrected Code</h3>
+                        <button id="copy-corrected-code" class="copy-btn">📋 Copy All</button>
+                    </div>
+                    <div class="correction-summary">
+                        <h4>Changes Made:</h4>
+                        <ul id="correction-changes" class="changes-list"></ul>
+                    </div>
+                    <div id="corrected-code-content" class="code-content-area"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
